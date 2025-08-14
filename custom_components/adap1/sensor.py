@@ -14,13 +14,13 @@ _LOGGER = logging.getLogger(__name__)
 
 # Szenzorok leképezése: név, mértékegység, device_class
 SENSOR_MAPPING = {
-    "os_version": ("ADA firmware verzió", None, None),  # Nincs device_class
-    "local_ip": ("Local IP", None, None),  # Nincs device_class
-    "timestamp": ("Az adatgyűjtés időbélyege", None, None),  # Nincs device_class
-    "cosem_logical_device_name": ("A logikai eszköz azonosító", None, None),  # Nincs device_class
-    "meter_serial_number": ("A mérő sorozatszáma", None, None),  # Nincs device_class
-    "current_tariff": ("Jelenlegi tarifa azonosítója", None, None),  # Nincs device_class
-    "circuit_breaker_status": ("A kismegszakító aktuális állapota", None, None),  # Nincs device_class
+    "os_version": ("ADA firmware verzió", None, None),
+    "local_ip": ("Local IP", None, None),
+    "timestamp": ("Az adatgyűjtés időbélyege", None, None),
+    "cosem_logical_device_name": ("A logikai eszköz azonosító", None, None),
+    "meter_serial_number": ("A mérő sorozatszáma", None, None),
+    "current_tariff": ("Jelenlegi tarifa azonosítója", None, None),
+    "circuit_breaker_status": ("A kismegszakító aktuális állapota", None, None),
     "limiter_threshold": ("A maximális áramfelvétel korlátja", "kW", SensorDeviceClass.POWER),
     "active_import_energy_total": ("Az összes importált energia", "kWh", SensorDeviceClass.ENERGY),
     "active_import_energy_tariff_1": ("Az első tarifán mért összes energia", "kWh", SensorDeviceClass.ENERGY),
@@ -32,7 +32,7 @@ SENSOR_MAPPING = {
     "active_export_energy_tariff_2": ("A második tarifán mért exportált energia", "kWh", SensorDeviceClass.ENERGY),
     "active_export_energy_tariff_3": ("A harmadik tarifán mért exportált energia", "kWh", SensorDeviceClass.ENERGY),
     "active_export_energy_tariff_4": ("A negyedik tarifán mért exportált energia", "kWh", SensorDeviceClass.ENERGY),
-    "reactive_import_energy": ("Import meddő energia (+R)", "kVARh", SensorDeviceClass.ENERGY),
+      "reactive_import_energy": ("Import meddő energia (+R)", "kVARh", SensorDeviceClass.ENERGY),
     "reactive_export_energy": ("Export meddő energia (-R)", "kVARh", SensorDeviceClass.ENERGY),
     "reactive_energy_qi": ("Import induktív energia", "kVARh", SensorDeviceClass.ENERGY),
     "reactive_energy_qii": ("Import kapacitív energia", "kVARh", SensorDeviceClass.ENERGY),
@@ -68,16 +68,15 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     """Szenzor platform beállítása."""
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
 
-    # Eszköz információ létrehozása
     device_info = DeviceInfo(
         identifiers={(DOMAIN, config_entry.entry_id)},
         manufacturer="GreenHESS",
         name="ADA P1 Meter",
         model="ADA P1 Meter",
         sw_version=coordinator.data.get("os_version", "N/A"),
-        hw_version=coordinator.data.get("hardware_version", "N/A"),  # Hardver verzió
-        serial_number=coordinator.data.get("meter_serial_number", "N/A"),  # Sorozatszám
-        connections={("ip", coordinator.data.get("local_ip", "N/A"))},  # IP cím
+        hw_version=coordinator.data.get("hardware_version", "N/A"),
+        serial_number=coordinator.data.get("meter_serial_number", "N/A"),
+        connections={("ip", coordinator.data.get("local_ip", "N/A"))},
     )
 
     sensors = []
@@ -86,8 +85,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
             friendly_name, unit_of_measurement, device_class = SENSOR_MAPPING[sensor_name]
             state_class = (
                 SensorStateClass.TOTAL_INCREASING
-                if sensor_name
-                in [
+                if sensor_name in [
                     "active_import_energy_total",
                     "active_import_energy_tariff_1",
                     "active_import_energy_tariff_2",
@@ -105,6 +103,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
             sensors.append(
                 AdaOkosMeroSensor(
                     coordinator,
+                    config_entry.entry_id,  # ÚJDONSÁG: entry_id bekerül a szenzorba
                     sensor_name,
                     friendly_name,
                     unit_of_measurement,
@@ -115,13 +114,13 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
             )
 
     async_add_entities(sensors)
-
 class AdaOkosMeroSensor(CoordinatorEntity, SensorEntity):
     """ADA P1 Meter szenzor reprezentációja."""
 
     def __init__(
         self,
         coordinator,
+        entry_id,
         sensor_name,
         friendly_name,
         unit_of_measurement,
@@ -129,8 +128,8 @@ class AdaOkosMeroSensor(CoordinatorEntity, SensorEntity):
         device_class=None,
         state_class=None,
     ):
-        """Szenzor inicializálása."""
         super().__init__(coordinator)
+        self._entry_id = entry_id
         self._name = sensor_name
         self._friendly_name = friendly_name
         self._unit_of_measurement = unit_of_measurement
@@ -141,7 +140,7 @@ class AdaOkosMeroSensor(CoordinatorEntity, SensorEntity):
 
     @property
     def name(self):
-        """A szenzor felhasználóbarát nevének visszaadása."""
+        """A szenzor felhasználóbarát neve."""
         return self._friendly_name
 
     @property
@@ -151,25 +150,23 @@ class AdaOkosMeroSensor(CoordinatorEntity, SensorEntity):
 
     @property
     def unit_of_measurement(self):
-        """A mértékegység visszaadása."""
         return self._unit_of_measurement
 
     @property
     def device_class(self):
-        """A szenzor eszköz osztályának visszaadása."""
         return self._device_class
 
     @property
     def state_class(self):
-        """A szenzor állapot osztályának visszaadása."""
         return self._state_class
 
     @property
     def device_info(self):
-        """Az eszköz információ visszaadása."""
         return self._device_info
 
     @property
     def unique_id(self):
-        """Egyedi azonosító visszaadása."""
-        return f"{DOMAIN}_{self._name}"
+        """Globálisan egyedi azonosító, amely megakadályozza az entitás-ütközést."""
+        return f"{DOMAIN}_{self._entry_id}_{self._name}"
+
+
